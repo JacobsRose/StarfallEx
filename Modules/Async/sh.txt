@@ -1,0 +1,40 @@
+--[[
+    Asynchronous Programming Core Module
+
+    By JacobsRose for JacobsLib
+
+    BEWARE! SYSTEM SHIT AHEAD!
+]]
+
+--@name Jacobs/Modules/Async/sh.txt
+local function Async(func)
+    return function(...)
+
+        local parent = coroutine.running()
+        local continue1 = coroutine.wrap(func)
+        local isYielded = false
+        local results
+
+        local function callback(...)
+            results = {...}
+            if isYielded then
+                coroutine.resume(parent, unpack(results))
+            end
+        end
+
+        continue1(callback, ...)
+        
+        if results == nil then
+            return function()
+                isYielded = true
+                return coroutine.yield()
+            end
+        else
+            return function()
+                return unpack(results)
+            end
+        end
+
+    end
+end
+return Async

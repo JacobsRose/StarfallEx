@@ -1,0 +1,101 @@
+-- Elastic Constraint Module
+
+--@server
+--@name Jacobs/Modules/Elastic/sv.txt
+--@include ../Object/sh.txt
+local elastics = {}
+local increment = 1
+local NewType = require("../Object/sh.txt")
+
+local Elastic = NewType("Elastic")
+
+local increment = 1
+function Elastic:Initialize(e1, e2, v1, v2, const, damp, stretch)
+
+    self.e1 = e1
+    self.e2 = e2
+
+    self.v1 = v1
+    self.v2 = v2
+
+    self.damp = damp
+
+    self.stretch = stretch
+    self.elastics_entities = {}
+    self.elastics_indexes = {}
+
+    self.amount = math.floor(const / 50000) + 1
+
+    local eachConstant = const / self.amount
+    local eachDamp = damp / self.amount
+
+    self.length = e1:localToWorld(v1) : getDistance(e2:localToWorld(v2))
+
+    for i = 1, self.amount do
+        self.elastics_entities[i] = constraint.elastic(increment, e1, e2, nil, nil, v1, v2, eachConstant, eachDamp, nil, nil, stretch)
+        self.elastics_indexes[i] = increment
+        increment = increment + 1
+    end
+    
+end
+
+function Elastic:Remove()
+    self.elastic:remove()
+end
+
+function Elastic:setConstant(c)
+    local newAmount = math.floor(c / 50000) + 1
+    local eachConstant = c / newAmount
+    if newAmount == self.amount then
+        for i = 1, #self.elastics_entities do
+            constraint.setElasticConstant(self.elastics_indexes[i], self.e1, eachConstant)
+        end
+    else
+        local eachDamp = self.damp / newAmount
+
+        if newAmount > self.amount then
+            for i = 1, #self.elastics_entities do
+                constraint.setElasticConstant(self.elastics_indexes[i], self.e1, eachConstant)
+                constraint.setElasticDamping(self.elastics_indexes, self.e1, eachDamp)
+            end
+            for i = #self.elastics_entities + 1, newAmount do
+                constraint.elastic(increment, self.e1, self.e2, nil, nil, self.v1, self.v2, eachConstant, eachDamp, nil, nil, self.stretch)
+                constraint.setElasticLength(increment, self.e1, self.length)
+                increment = increment + 1 
+            end
+        else
+            local new_elastic_entities = {}
+            local new_elastic_indexes = {}
+    
+            for i = 1, newAmount do
+                new_elastic_entities[i] = self.elastics_entities[i]
+                new_elastic_indexes[i] = self.elastics_indexes[i]
+    
+                constraint.setElasticConstant(new_elastic_indexes[i], self.e1, eachConstant)
+                constraint.setElasticDamping(new_elastic_indexes[i], self.e1, eachDamp)
+            end
+            
+            for i = newAmount + 1, self.amount do
+                self.elastics_entities[i].remove()
+            end
+    
+            self.elastics_entities = new_elastic_entities
+            self.elastics_indexes = new_elastic_indexes
+        end
+    end
+end
+
+function Elastic:setDamping(d)
+    local eachDamping = d / self.amount
+    for i, v in ipairs(self.elastics_entities) do
+        constraint.setElasticDamping(self.i, self.e1, eachDamping)
+    end
+    self.damp = d
+end
+function Elastic:setLength(l)
+    for i1,i2 in ipairs(self.elastics_indexes) do
+        constraint.setElasticLength(i2, self.e1, l)
+    end
+    self.length = l
+end
+return Elastic

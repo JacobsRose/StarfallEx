@@ -1,0 +1,111 @@
+--@name Jacobs/Modules/Ackerman/sv.txt
+--@server
+
+local function calculateAngle(x1, y1, ang1, x2, y2, ang2, x3, y3)
+    if math.abs(ang1 - ang2) <= 0.00001 then
+        return ang1
+    end
+    -- Преобразуем углы в радианы
+    local rad1 = math.rad(ang1)
+    local rad2 = math.rad(ang2)
+
+    -- Направления для первого и второго колес
+    local dir1 = {x = math.cos(rad1), y = math.sin(rad1)}
+    local dir2 = {x = math.cos(rad2), y = math.sin(rad2)}
+
+    -- Уравнения для прямых
+    local a1 = dir1.y / dir1.x
+    local b1 = y1 - a1 * x1
+
+    local a2 = dir2.y / dir2.x
+    local b2 = y2 - a2 * x2
+
+    -- Вычисляем точку пересечения
+    local intersectX, intersectY
+
+        intersectX = (b2 - b1) / (a1 - a2)
+        intersectY = a1 * intersectX + b1
+
+    -- Вычисляем угол для третьего колеса
+    local angle3 = math.atan2(intersectY - y3, intersectX - x3)
+
+    -- Преобразуем угол в градусы
+    return math.deg(angle3)
+end
+
+local function calculateAngleRadius(x1, y1, ang1, x2, y2, ang2, x3, y3)
+    if math.abs(ang1 - ang2) <= 0.01 then
+        return ang1, 1  -- Если колеса параллельны, возвращаем 1 как длину окружности
+    end
+    -- Преобразуем углы в радианы
+    local rad1 = math.rad(ang1)
+    local rad2 = math.rad(ang2)
+
+    -- Направления для первого и второго колес
+    local dir1 = {x = math.cos(rad1), y = math.sin(rad1)}
+    local dir2 = {x = math.cos(rad2), y = math.sin(rad2)}
+
+    -- Уравнения для прямых
+    local a1 = dir1.y / dir1.x
+    local b1 = y1 - a1 * x1
+
+    local a2 = dir2.y / dir2.x
+    local b2 = y2 - a2 * x2
+
+    -- Вычисляем точку пересечения
+    local intersectX, intersectY
+
+    if dir1.x ~= 0 and dir2.x ~= 0 and a1 ~= a2 then
+        intersectX = (b2 - b1) / (a1 - a2)
+        intersectY = a1 * intersectX + b1
+    else
+        -- Параллельные колеса: используем произвольное значение
+        intersectX = x1
+        intersectY = y1
+    end
+
+    -- Вычисляем угол для третьего колеса
+    local angle3 = math.atan2(intersectY - y3, intersectX - x3)
+
+    -- Преобразуем угол в градусы
+    angle3 = math.deg(angle3)
+
+    -- Вычисляем радиус окружности (расстояние от третьего колеса до точки пересечения)
+    local dx = intersectX - x3
+    local dy = intersectY - y3
+    local radius = math.sqrt(dx * dx + dy * dy)
+
+    return angle3, radius
+end
+
+Ackerman = {
+    GenerateAngler = function(x1, y1, ang1, x2, y2, x3, y3, minAngle, maxAngle, resolution)
+        local tbl = {}
+        for i = 1, resolution + 1 do
+            local totalang = maxAngle - minAngle
+            local part = totalang / resolution
+            tbl[i] = calculateAngle(x1,y1,ang1, x2,y2, minAngle + (part * (i- 1)), x3, y3)
+        end 
+        
+        return function(ang)
+            return tbl[math.round(((ang - minAngle) / ((maxAngle - minAngle) / resolution))+1)]
+        end
+    
+    end,
+    GenerateAnglerWithRadius = function(x1, y1, ang1, x2, y2, x3, y3, minAngle, maxAngle, resolution)
+        local radiuses = {}
+        local angles = {}
+        for i = 1, resolution + 1 do
+            local totalang = maxAngle - minAngle
+            local part = totalang / resolution
+            angles[i], radiuses[i] = calculateAngleRadius(x1,y1,ang1, x2,y2, minAngle + (part * (i- 1)), x3, y3)
+        end 
+        
+        return function(ang)
+            local i = math.round(((ang - minAngle) / ((maxAngle - minAngle) / resolution))+1)
+            return angles[i], radiuses[i] 
+        end
+    
+    end,
+}
+return Ackerman

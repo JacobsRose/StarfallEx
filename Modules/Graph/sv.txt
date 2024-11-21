@@ -1,0 +1,42 @@
+--@name Jacobs/Modules/Graph/sv.txt
+--@server
+--@include ../PropAsync/sv.txt
+--@include ../Async/sh.txt
+--@include ../Hook/sh.txt
+
+require("../PropAsync/sv.txt")
+local Async = require("../Async/sh.txt")
+local Hook = require("../Hook/sh.txt")
+
+
+
+local func = Async(function(callback)
+
+    local queue = {}
+    local function addClientToQueue(ply) 
+        table.insert(queue, ply)
+    end
+
+    Hook.On("ClientInitialized", addClientToQueue)
+
+    local monitor = prop.createComponentAsync(chip():localToWorld(Vector(0,0,100)), Angle(0,0,90), "starfall_screen", "models/sprops/rectangles/size_7/rect_144x144x3.mdl", true)()
+    monitor:linkComponent(chip())
+    monitor:setColor(Color(0,0,0,1))
+
+    
+    
+    if next(queue) then
+        net.start("graph_ready")
+        net.send(queue, true)
+    end
+
+    queue = nil
+
+    Hook.Off("ClientInitialized", addClientToQueue)
+
+    Hook.On("ClientInitialized", function(ply)
+        net.start("graph_ready")
+        net.send(ply, true)
+    end)
+end)
+func()

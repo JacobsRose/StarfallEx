@@ -1,0 +1,97 @@
+--@name Jacobs/Modules/Graph/cl.txt
+--@client
+--@include ../Hook/sh.txt
+--@include ../SyncFork/sh.txt
+
+local Hook = require("../Hook/sh.txt")
+local SyncFork = require("../SyncFork/sh.txt")
+
+local space_x = 50
+local space_y = 50
+
+local function draw(tbl)
+    
+    local args = tbl[1]
+
+    local minX = args[1]
+    local maxX = args[2]
+    local stepX = args[3]
+    local nameX = args[4]
+    local dividerX = args[5]
+
+    local minY = args[6]
+    local maxY = args[7]
+    local stepY = args[8]
+    local nameY = args[9]
+    local dividerY = args[10]
+    local funcs = args[11]
+    
+    local function primaryRender()
+        render.createRenderTarget("")
+        render.selectRenderTarget("")
+
+        local resolution_x, resolution_y = 512, 512 --render.getResolution()
+
+        local active_resolution_x = resolution_x - space_x --x length pixels in graph itself
+        local active_resolution_y = resolution_y - space_y 
+        print(resolution_x)
+        
+        local steps_x = (maxX - minX) / stepX -- drawing verticals
+
+        local stepLen_x = active_resolution_x / steps_x
+
+        for i = 1, steps_x do 
+            local x = space_x + ((i-1) * stepLen_x)
+            render.drawRect(x, 0, 1, active_resolution_y)
+            render.drawText(x, active_resolution_y + (space_y / 2) - 8, tostring((math.remap(i, 1, steps_x+ 1, minX, maxX))/dividerX), TEXT_ALIGN["CENTER"])
+        end
+        render.drawText(space_x / 2, resolution_y - ((space_y / 4)) - 8, nameX .."/" .. dividerX, TEXT_ALIGN["CENTER"])
+
+
+        local steps_y = (maxY - minY) / stepY -- drawing horizontals
+
+        local stepLen_y = active_resolution_y / steps_y
+
+        for i = 1, steps_y do
+            local y = (active_resolution_y -1 - ((i-1) * stepLen_y))
+            render.drawRect(space_x, y, active_resolution_x, 1)
+
+            render.drawText(space_x / 2 , y - 8 , tostring((math.remap(i, 1, steps_y+ 1, minY, maxY))/dividerY), TEXT_ALIGN["CENTER"])
+        end
+        render.drawText(space_x / 2, resolution_y - ((space_y / 4) * 3) - 8, nameY .."/" .. dividerY, TEXT_ALIGN["CENTER"])
+
+
+        for k,funcPair in pairs(funcs) do
+            local func = funcPair[1]
+            local color = funcPair[2]
+
+            for i = 1, active_resolution_x do 
+                local x1 = math.remap(i-1, 0, active_resolution_x, minX, maxX)
+                
+                local y1 = func(x1)
+                
+                local y = active_resolution_y - (math.remap(y1, minY, maxY, 0, active_resolution_y)) - 1
+                local x = space_x - 1 + i
+                --print("x1:", x1, ";y1:", y1,";x:", x, ";y:", y, ";")
+                render.setColor(color)
+                render.drawRect(x, y, 1,1)
+            end
+        end
+        
+            
+        
+        Hook.Off("render", primaryRender)
+        Hook.On("render", function()
+            render.setRenderTargetTexture("")
+            render.drawTexturedRect(0,0, 1024, 1024)
+        end)
+        
+    end
+    Hook.On("render", primaryRender)
+end
+
+local createThread = SyncFork(draw)
+local input = createThread()
+net.receive("graph_ready", createThread())
+
+return input

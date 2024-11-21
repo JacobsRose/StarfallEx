@@ -1,0 +1,62 @@
+--[[
+    Async Prop Spawners
+
+    Needed to spawn many props without crashing the chip
+    
+    By JacobsRose  for JacobsLib
+
+    BEWARE! SYSTEM SHIT AHEAD!
+]]
+
+--@name Jacobs/Modules/PropAsync/sv.txt
+--@server
+--@include ../Async/sh.txt
+
+local Async = require("../Async/sh.txt")
+
+local queue = {}
+local isWorking = false
+
+local function work()
+    local k,v = next(queue)
+    if prop.canSpawn() then
+        
+        v[3](v[1](unpack(v[2]))) -- Executing
+        queue[k] = nil --Releasing
+
+        if next(queue) then
+            work()
+        else
+            isWorking = false
+        end
+        
+    else
+        timer.simple(1 / prop.spawnRate(), work)
+    end
+
+end
+
+local addToQueue = function(baseFunc, params, callback)
+
+    table.insert(queue, {baseFunc, params, callback})
+
+    if !isWorking then
+        isWorking = true
+        work()
+    end
+
+end
+
+prop.createAsync = Async(function(callback, ...)
+    addToQueue(prop.create, {...}, callback)
+end)
+prop.createCustomAsync = Async(function(callback, ...)
+    addToQueue(prop.createCustom, {...}, callback)
+end)
+prop.createComponentAsync = Async(function(callback, ...)
+    addToQueue(prop.createComponent, {...}, callback)
+end)
+prop.createSeatAsync = Async(function(callback, ...)
+    addToQueue(prop.createSeat, {...}, callback)
+end)
+

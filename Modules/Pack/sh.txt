@@ -1,0 +1,4 @@
+--@name Jacobs/Modules/Pack/sh.txt
+function pack(...)
+    return { n = select("#", ...), ... }
+end

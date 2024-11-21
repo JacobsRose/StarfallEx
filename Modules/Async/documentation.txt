@@ -1,0 +1,19 @@
+--[[
+Instructions:
+    
+Injecting the module in to your script:
+
+    local Async = require("PathToTheModule")
+
+Creating an Async function:
+
+    local YourNewAsyncFunction = Async(function(callback, ...) *Code here* end)
+
+Running Async function from anywhere without waiting until it ends its job
+
+    YourNewAsyncFunction(...)
+
+Running Async function FROM INSIDE OF ANOTHER Async function with waiting till the end
+
+    local result = YourNewAsyncFunction(...)()
+]]

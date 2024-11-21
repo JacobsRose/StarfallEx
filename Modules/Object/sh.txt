@@ -1,0 +1,45 @@
+--[[
+    Object Oriented Programming Core Module
+    
+    By JacobsRose for JacobsLib
+
+    BEWARE! SYSTEM SHIT AHEAD!
+]]
+
+--@name Jacobs/Modules/Object/sh.txt
+--@include ../Async/sh.txt
+
+local Async = require("../Async/sh.txt")
+local Object = {}
+
+Object.__index = Object
+Object.__string = "Unnamed Class"
+
+function Object:new(...)
+    local instance = {}
+    setmetatable(instance, self)
+    if self.Initialize ~= nil then
+        instance:Initialize(...)
+    end
+    return instance
+end
+
+Object.newAsync = Async(function(callback, self, ...)
+    local instance = {}
+    setmetatable(instance, self)
+    if self.InitializeAsync ~= nil then
+        instance:InitializeAsync(...)()
+    end
+    callback(instance)
+end)
+
+local NewType = function(name, parent)
+
+    local type = {}
+    
+    type.__index = type
+    
+    setmetatable(type, parent or Object)
+    return type
+end
+return NewType

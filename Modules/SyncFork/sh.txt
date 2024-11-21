@@ -1,0 +1,24 @@
+--@name Jacobs/Modules/SyncFork/sh.txt
+
+return function(toRun)
+    local increment = 1
+    local done = {}
+    local args = {}
+    return function() -- Add fork thread
+        local id = increment
+        increment = increment + 1
+
+        done[id] = false
+        return function(...)
+            done[id] = true
+            args[id] = {...}
+            
+            for i,v in ipairs(done) do
+                if v == false then return end
+            end
+
+            toRun(args)
+        end
+    end
+    
+end

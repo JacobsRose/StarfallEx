@@ -1,0 +1,71 @@
+--@name Jacobs/Modules/Meshbuilder/cl.txt
+--@client
+--@include ../Async/sh.txt
+--@include ../Hook/sh.txt
+
+local Async = require("../Async/sh.txt")
+local Hook = require("../Hook/sh.txt")
+
+local queue = {}
+local download = Async(function(callback, url)
+    http.get(url, callback)
+end)
+local createFromObj = Async(function(callback, obj)
+    local continue = coroutine.wrap(function()
+        return mesh.createFromObj(obj, true, false)
+    end)
+    
+    local function work()
+        while cpuTotalUsed() < 0.8 * cpuMax() do
+            local result = continue()
+            if result then
+                Hook.Off("tick", work)
+                callback(result)
+                break
+            end
+        end
+    end
+
+    Hook.On("tick", work)
+end)
+local loadUrl = Async(function(callback, url)
+    local obj = download(url)()
+    local meshes = createFromObj(obj)()
+
+    for holo, name in pairs(queue[url]) do
+        holo:setMesh(meshes[name])
+    end
+
+    callback()
+end)
+net.recieve("newMesh", function()
+    local holo = net.readEntity()
+    local name = net.readString()
+    local link = net.readString()
+    
+    if !queue[link] then
+        queue[link] = {}
+
+        loadUrl(link)
+    end
+
+    queue[link][holo] = name
+end)
+
+net.recieve("loadMeshes", function()
+    local urlAmount = net.readUInt(16)
+    for i = 1, urlAmount do
+        local url = net.readString()
+
+        local holoAmount = net.readUInt(16)
+
+        queue[url] = {}
+        for i1 = 1, holoAmount do
+            local holo = net.readEntity()
+            local name = net.readString()
+            queue[url][holo] = name
+        end
+
+        loadUrl(url)
+    end
+end)

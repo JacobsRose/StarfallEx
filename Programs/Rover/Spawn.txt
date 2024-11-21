@@ -1,0 +1,10 @@
+--@name Jacobs/Programs/Rover/Spawn.txt
+--@include ../../Modules/Rover/sv.txt
+if SERVER then
+    local Rover_Server = require("../../Modules/Rover/sv.txt")
+
+    Rover_Server:newAsync(chip():localToWorld(Vector(0,0,100)), Angle(0))
+else
+
+end
+

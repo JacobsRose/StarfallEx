@@ -1,0 +1,162 @@
+--@name Jacobs/Modules/Rover/sv.txt
+--@server
+--@include ../Object/sh.txt
+--@include ../Async/sh.txt
+--@include ../PropAsync/sv.txt
+--@include ../Hook/sh.txt
+--@include ../Ackerman/sv.txt
+--@include ../Elastic/sv.txt
+
+local NewType = require("../Object/sh.txt")
+local Async = require("../Async/sh.txt")
+require("../PropAsync/sv.txt")
+local Hook = require("../Hook/sh.txt")
+local Ackerman = require("../Ackerman/sv.txt")
+local Elastic = require("../Elastic/sv.txt")
+
+local Rover = NewType("Rover")
+
+
+local axle_positions = {}
+for i1 = 1, 4 do
+    axle_positions[i1] = {}
+    for i2 = 1, 2 do
+    
+    local pos = Vector(((i2-1.5)* 2) * 50, (i1 - 2.5) * 120, -40)
+
+    axle_positions[i1][i2] = pos
+
+    end
+end
+
+local anglers = {}
+for i1, v in pairs(axle_positions) do
+    anglers[i1] = {}
+    for i2, pos in pairs(v) do
+        anglers[i1][i2] = Ackerman.GenerateAnglerWithRadius(0, -120, 0, 0, 240, pos[1], pos[2], -45, 45, 1800)
+    end
+end
+
+Rover.InitializeAsync = Async(function(callback, self, pos, ang)
+ 
+    local base = prop.createAsync(pos, ang, "models/sprops/rectangles/size_10/rect_480x120x3.mdl", true)()
+    base:setMass(10000)
+    base:setColor(Color(50,50,50,150))
+    
+
+    local axles = {}
+    local plates = {}
+    for i1, axle in pairs(axle_positions) do
+        axles[i1] = {}
+        plates[i1] = {}
+        for i2, pos in pairs(axle) do
+
+            local wheel = prop.createAsync(base:localToWorld(pos), base:getAngles(),"models/sprops/rectangles/size_1/rect_3x3x3.mdl",true)()
+            wheel:setMass(500)
+            wheel:enableSphere(true, 22.5)
+
+            local holo = hologram.create(wheel:getPos(), wheel:localToWorldAngles(Angle(0,((i2 - 1.5)*2) * -90,0)), "models/sprops/trans/wheel_d/t_wheel45.mdl", Vector(1))
+            holo:setParent(wheel)
+            holo:setBodygroup(1,7)
+
+            constraint.rope(1, base, wheel, nil, nil, base:worldToLocal(wheel:localToWorld(Vector(16000,0,0))), Vector(0))
+            constraint.rope(1, base, wheel, nil, nil, base:worldToLocal(wheel:localToWorld(Vector(-16000,0,0))), Vector(0))
+            constraint.rope(1, base, wheel, nil, nil, base:worldToLocal(wheel:localToWorld(Vector(0,16000,0))), Vector(0))
+            constraint.rope(1, base, wheel, nil, nil, base:worldToLocal(wheel:localToWorld(Vector(0,-16000,0))), Vector(0))
+
+
+            constraint.ballsocketadv(base, wheel, nil, nil, Vector(), Vector(), 0, 0, Vector(-180,-0.1,-180), Vector(180,0.1,180), Vector(0), true, true)
+
+            Elastic:new(base, wheel, base:worldToLocal(wheel:getPos()) + Vector(0,0,9000), Vector(0), 100000, 10000, false)
+
+            local plate = prop.createAsync(Vector(0), base:getAngles(), "models/sprops/rectangles/size_1/rect_3x3x3.mdl", true)()
+            plate:setMass(50000)
+            constraint.ballsocketadv(plate, wheel, nil, nil, Vector(), Vector(), 0, 0, Vector(-180,-180,-0.1), Vector(180,180,0.1), Vector(0), true, true)
+            
+            axles[i1][i2] = wheel
+            plates[i1][i2] = plate
+
+        end
+    end
+    
+    local seat = prop.createSeatAsync(base:localToWorld(Vector(0,220, 10)), base:localToWorldAngles(Angle(0)), "models/nova/jeep_seat.mdl", true)()
+    constraint.weld(seat, base)
+    seat:setParent(base)
+
+
+    local steer_sensivity = 1
+
+    local steerAngle = 0
+    local rpm = 0
+    -- Updater
+    local OnTick = function()
+
+        --Steer Update
+        local vel = base:getLocalVelocity()
+        local inertia_ang = -math.deg(math.atan2( vel.x, vel.y))
+        local inertia_power = vel:getLength2DSqr() * 0.0000001
+        local dist = inertia_ang - steerAngle 
+
+        local feedback = inertia_power * dist
+
+        steerAngle = steerAngle + feedback
+
+        local driver = seat:getDriver()
+
+        
+        if driver ~= nil and isValid(driver) then
+            if driver:keyDown(512) then
+                steerAngle = steerAngle + steer_sensivity
+            end
+            if driver:keyDown(1024) then
+                steerAngle = steerAngle - steer_sensivity
+            end
+        end
+        steerAngle = math.clamp(steerAngle, -45, 45)
+        local radiuses = {}
+        
+        for i1, axle in pairs(axles) do
+            radiuses[i1] = {}
+            for i2, wheel in pairs(axle) do
+                local ang, radius = anglers[i1][i2](steerAngle)
+                radiuses[i1][i2] = radius
+                plates[i1][i2]:setAngles(base:localToWorldAngles(Angle(0,ang, 0)))
+                plates[i1][i2]:setFrozen(true)
+            end
+        end
+
+        --Transmission update
+        local function updateTransmission()
+
+            local EnergySq = 0
+
+            local RadiusSum = 0
+            for i1, axle in pairs(axles) do
+                for i2, wheel in pairs(axle) do
+                    
+                    EnergySq = EnergySq + wheel:getAngleVelocity()[1]
+
+                    RadiusSum = RadiusSum + radiuses[i1][i2] 
+                end 
+            end
+            local MiddleRadius = RadiusSum / 8
+            local MiddleSpeed = EnergySq / 8
+            for i1, axle in pairs(radiuses) do
+                for i2, radius in pairs(axle) do
+                    
+                    local diff = radius/MiddleRadius
+                    local required_speed = MiddleSpeed * diff
+                    local angvel = axles[i1][i2]:getAngleVelocity()
+                    angvel[1] = required_speed
+                    axles[i1][i2]:setAngleVelocity(angvel)
+                end 
+            end
+            
+        end
+        updateTransmission()
+    end
+    Hook.On("tick", OnTick)
+
+    callback()
+end)
+return Rover

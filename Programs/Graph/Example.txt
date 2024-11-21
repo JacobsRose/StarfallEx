@@ -1,0 +1,56 @@
+--@name Jacobs/Programs/Graph/Example.txt
+--@include ../../Modules/Graph/sv.txt
+--@include ../../Modules/Graph/cl.txt
+
+local func = function(a) end
+
+if SERVER then
+    require("../../Modules/Graph/sv.txt")
+else
+    local Graph = require("../../Modules/Graph/cl.txt")
+
+    
+
+        local minX = -4000
+        local maxX = 4000
+        local stepX = 500
+        local nameX = "rpm"
+        local dividerX = 100
+
+        local minY = -300
+        local maxY = 300
+        local stepY = 50
+        local nameY = "kw"
+        local dividerY = 10
+        
+        local funcs = {}
+
+        
+        funcs[1] = {
+            
+            function(x)
+                
+                return math.max(0, (1 - (300 / x) - (x / 4000)^2) *  x /10)
+            end,
+            Color(0,255,0),
+        }
+        funcs[2] ={
+            function(x)
+                local static = x * 0.005
+                local aero =(x * 0.002)^2
+                if x< 0 then
+                    aero = -aero
+                end
+                return - ( static + aero)
+            end,
+            Color(255,0,0),
+        }
+        funcs[3] = {
+            function(x)
+                return funcs[1][1](x) + funcs[2][1](x)
+            end,
+            Color(0,0,255)
+        }
+    
+    Graph(minX, maxX, stepX, nameX, dividerX, minY, maxY, stepY, nameY, dividerY, funcs)
+end

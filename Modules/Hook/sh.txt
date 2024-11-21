@@ -1,0 +1,42 @@
+--[[
+    Event - like hooks module
+    
+    By JacobsRose for JacobsLib
+
+    BEWARE! SYSTEM SHIT AHEAD!
+]]
+
+--@name Jacobs/Modules/Hook/sh.txt
+
+local hooks = {}
+
+local globalRunner = function (name, ...)
+    for listener, b in pairs(hooks[name][2]) do
+        listener(...)
+    end
+end
+local Hook = {
+    On = function(name, func)
+
+        if hooks[name] == nil then -- Generating new manager if didnt exist
+            local localRunner = function(...) 
+                globalRunner(name, ...)
+            end
+            hooks[name] = {localRunner, {}}
+            hook.add(name, "", localRunner)
+        end
+        
+        hooks[name][2][func] = true --Adding to the queue of listeners
+    end,
+    Off = function(name,func)
+        hooks[name][2][func] = nil -- Removing listener
+
+        local k,v = next(hooks[name][2])
+        if v == nil then
+            hook.remove(name, "")
+            hooks[name] = nil
+        end
+    end,
+}
+
+return Hook
