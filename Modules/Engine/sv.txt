@@ -5,8 +5,9 @@ local NewType = require("../Object/sh.txt")
 
 local Engine = NewType("Engine")
 
-function Engine:Initialize(pos, ang, holoBody, holoFlywheel, funcs, debugColors)
+function Engine:Initialize(pos, ang, holoBody, holoOffset, holoFlywheel, funcs, debugColors)
     self.holo = holoBody
+    holo.
 end
 function Engine:setParent(p)
     self.holo:setParent(p)
