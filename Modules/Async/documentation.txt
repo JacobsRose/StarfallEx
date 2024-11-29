@@ -7,7 +7,26 @@ Injecting the module in to your script:
 
 Creating an Async function:
 
-    local YourNewAsyncFunction = Async(function(callback, ...) *Code here* end)
+    local YourNewAsyncFunction = Async(function(callback, *Arguments passed on call*) 
+        *Code here* 
+        callback(*result*) 
+    end)
+
+    Important: when you create an async function, the first arg is always - callback. The left args are args that were passed on call. 
+    Callback is just like "return" and used the same way, but also can be called from another function to finish your async function.
+
+    For example: 
+    local TimeMachine = Async(function(callback, time, object1, object2) 
+    
+        timer.simple(time, function()
+            print("We are in future!")
+            callback(object1, object2)
+        end)
+    end)
+
+    And calling from inside of other async function:
+        local pastObject1, pastObject2 = TimeMachine(10, "Gift from the past 1", "Gift from the past 2")()
+
 
 Running Async function from anywhere without waiting until it ends its job
 
@@ -15,5 +34,6 @@ Running Async function from anywhere without waiting until it ends its job
 
 Running Async function FROM INSIDE OF ANOTHER Async function with waiting till the end
 
-    local result = YourNewAsyncFunction(...)()
+    local result = YourNewAsyncFunction(...)() --Pay attention, additional "()" is await
+
 ]]

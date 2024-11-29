@@ -2,6 +2,7 @@
     With this module you don`t need to care about indexes.
     You can also dynamically modify elastics parameters
     And also now you can use "constants" above 50000.
+    In this case, there are multiple gmod elastics used as one
 
     Create elastic with:
         local myElastic = Elastic:new(entity1, entity2, vector1, vector2, const, damp, stretchOnly)
